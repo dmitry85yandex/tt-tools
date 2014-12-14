@@ -1,0 +1,92 @@
+/** 
+ * pr-updater
+ * @description Update a pull request description throught command line
+ * @example  How to use this script
+ * RUN: 
+ * In command line in the project directory with git init files ".git" type next line: 
+ * $ node pr-updater --pr 1 --section codestyle 'Codestyle: :ok_hand:'
+ * The rest of the functionality is implemented in accordance with https://github.com/yandex-lego/test-task-tools 
+ * @version 0.01
+ * @autor Surzhikov Dmitry
+ */
+
+console.log('pr-updater running!');
+/**
+ * run
+ * @desc Run main application with input paramenters
+ * @param string owner - GITBUB username
+ * @param string repo - GITBUB repo name
+ * @param string pass - user password
+ */
+function run(owner, repo, pass) {
+    var api = require("./api"),
+            arguments = process.argv.slice(2);
+    if(owner && repo && pass) {
+        var credentials = {
+            owner: owner,
+            repo: repo,
+            pass: pass,
+        };
+        api.implementation.init(credentials, arguments);
+    }
+}
+
+// Set credentials
+var owner = false,
+    repo = false,
+        pass = false;
+
+// Try read config file
+try {
+    var fs = require('fs'),
+        text = fs.readFileSync('.git/config', 'utf8'),
+            sPos = text.indexOf('github.com/'),
+                firstPart = text.substring(sPos, text.length),
+                    ePos = firstPart.indexOf('\n'),
+                        secondPart = firstPart.substring(0, ePos),
+                            stack = secondPart.split('/');
+    owner = (stack[1]) ? stack[1] : false;
+
+    if(stack[2]) { 
+        var tailPos = stack[2].indexOf('.git');
+        repo = stack[2].substring(0, tailPos);
+    }
+} catch (err) {        
+    console.log('Sorry, do not have access to your credentials.');
+    process.exit(0);
+}
+
+// try to get password from buffer file
+if(owner && repo) {
+    try {
+        var fs = require('fs'),
+            credentials = fs.readFileSync('credentials', 'utf8');
+        pass = credentials.trim();
+    } catch (err) {
+        //user enter password
+        var prompt = require('prompt'),
+            properties = [
+                {
+                    name: 'pass',
+                    description: 'Please, enter ' + 
+                            '<'.green + owner.green + '>'.green + ' password'.grey,
+                    hidden: true
+                }
+            ];
+        prompt.start();
+        prompt.get(properties, function (err, result) {
+           pass = result.pass; 
+           if(pass) {
+               // save credentials to buffer file
+                var fs = require('fs');
+                fs.writeFileSync('credentials', pass);
+                
+                // run application 
+                run(owner, repo, pass);
+           }
+        });
+    }
+}
+
+// run application
+run(owner, repo, pass);
